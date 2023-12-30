@@ -1,65 +1,40 @@
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 
-public class PrintNumbers {
-
+public class PositiveNumberChecker {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+        String filePath = "C:\Users\ahamed\OneDrive\Documents\Java-Day-5-AF\number.txt";
 
-        System.out.print("Enter the value of N: ");
-        int N = scanner.nextInt();
-
-        SharedPrinter printer = new SharedPrinter();
-
-        Thread t1 = new Thread(new NumberPrinter(printer, 1, N / 2), "Thread-1");
-        Thread t2 = new Thread(new NumberPrinter(printer, N / 2 + 1, N), "Thread-2");
-
-        t1.start();
-        t2.start();
-
-        scanner.close();
+        try {
+            checkForPositiveNumbers(filePath);
+        } catch (PositiveNumberException e) {
+            System.out.println("Error: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Error reading the file: " + e.getMessage());
+        }
     }
 
-    // SharedPrinter class to print numbers
-    static class SharedPrinter {
-        private int number = 1;
-
-        public void print(int num) {
-            synchronized (this) {
-                while (number <= num) {
-                    while (number < num) {
-                        try {
-                            wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    if (number <= num) {
-                        System.out.println(Thread.currentThread().getName() + ": " + number);
-                        number++;
-                        notifyAll();
+    private static void checkForPositiveNumbers(String filePath) throws IOException, PositiveNumberException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            System.out.print("Content of " + filePath + ": ");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.print(line + " ");
+                String[] numbers = line.split("\\s+");
+                for (String number : numbers) {
+                    int num = Integer.parseInt(number);
+                    if (num > 0) {
+                        throw new PositiveNumberException("Positive number found: " + num);
                     }
                 }
             }
         }
     }
 
-    // NumberPrinter class to specify range of numbers to print
-    static class NumberPrinter implements Runnable {
-        private final SharedPrinter printer;
-        private final int start;
-        private final int end;
-
-        public NumberPrinter(SharedPrinter printer, int start, int end) {
-            this.printer = printer;
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        public void run() {
-            for (int i = start; i <= end; i++) {
-                printer.print(i);
-            }
+    static class PositiveNumberException extends Exception {
+        public PositiveNumberException(String message) {
+            super(message);
         }
     }
 }

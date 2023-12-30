@@ -1,96 +1,57 @@
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Stream;
 
-public class PrimePalindromeThreads {
-    private static final Object lock = new Object();
-    private static List<Integer> primeNumbers = new ArrayList<>();
-    private static List<Integer> palindromeNumbers = new ArrayList<>();
+public class MostCommonWordFinder {
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter directory name: ");
+        String directoryPath = System.console().readLine();
 
-        // Get input for the ranges from the user
-        System.out.print("Enter the start of the prime number range: ");
-        int primeStart = scanner.nextInt();
-
-        System.out.print("Enter the end of the prime number range: ");
-        int primeEnd = scanner.nextInt();
-
-        System.out.print("Enter the start of the palindrome number range: ");
-        int palindromeStart = scanner.nextInt();
-
-        System.out.print("Enter the end of the palindrome number range: ");
-        int palindromeEnd = scanner.nextInt();
-
-        // Create two threads
-        Thread primeThread = new Thread(() -> findPrimes(primeStart, primeEnd));
-        Thread palindromeThread = new Thread(() -> findPalindromes(palindromeStart, palindromeEnd));
-
-        // Start the threads
-        primeThread.start();
         try {
-            primeThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            findMostCommonWords(directoryPath);
+        } catch (IOException e) {
+            System.out.println("Error reading files: " + e.getMessage());
         }
-
-        palindromeThread.start();
-        try {
-            palindromeThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        // Display the results
-        System.out.println("Prime numbers from " + primeStart + " to " + primeEnd + " : " + primeNumbers);
-        System.out.print("\n");
-        System.out.println("Palindrome numbers from " + palindromeStart + " to " + palindromeEnd + " : " + palindromeNumbers);
-
-        // Close the scanner
-        scanner.close();
     }
 
-    private static void findPrimes(int start, int end) {
-        synchronized (lock) {
-            for (int i = start; i <= end; i++) {
-                if (isPrime(i)) {
-                    primeNumbers.add(i);
+    private static void findMostCommonWords(String directoryPath) throws IOException {
+        Map<String, Integer> wordFrequencyMap = new HashMap<>();
+
+        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath), FileVisitOption.FOLLOW_LINKS)) {
+            paths.filter(Files::isRegularFile)
+                 .forEach(file -> processFile(file, wordFrequencyMap));
+        }
+
+        int maxFrequency = wordFrequencyMap.values().stream().max(Integer::compareTo).orElse(0);
+
+        System.out.println("Most common words:");
+
+        wordFrequencyMap.entrySet().stream()
+                .filter(entry -> entry.getValue() == maxFrequency)
+                .forEach(entry -> System.out.println("Word: " + entry.getKey() + ", Frequency: " + entry.getValue()));
+    }
+
+    private static void processFile(Path filePath, Map<String, Integer> wordFrequencyMap) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toString()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] words = line.toLowerCase().split("\\s+");
+                for (String word : words) {
+                    wordFrequencyMap.put(word, wordFrequencyMap.getOrDefault(word, 0) + 1);
                 }
             }
+        } catch (IOException e) {
+            System.out.println("Error reading file " + filePath + ": " + e.getMessage());
         }
-    }
-
-    private static void findPalindromes(int start, int end) {
-        synchronized (lock) {
-            for (int i = start; i <= end; i++) {
-                if (isPalindrome(i)) {
-                    palindromeNumbers.add(i);
-                }
-            }
-        }
-    }
-
-    private static boolean isPrime(int num) {
-        if (num < 2) {
-            return false;
-        }
-        for (int i = 2; i <= Math.sqrt(num); i++) {
-            if (num % i == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isPalindrome(int num) {
-        int originalNum = num;
-        int reversedNum = 0;
-        while (num != 0) {
-            int digit = num % 10;
-            reversedNum = reversedNum * 10 + digit;
-            num /= 10;
-        }
-        return originalNum == reversedNum;
     }
 }
